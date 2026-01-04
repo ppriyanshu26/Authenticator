@@ -1,12 +1,15 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import  messagebox
 import pyotp
 import time
 import hashlib
 import config
 import utils
+import reset_handler
+import creds_handler
+import export_handler
 
-def open_popup(func, title="Popup", size="370x300"):
+def open_popup(func, title="Popup", size="370x300", *args, **kwargs):
     if config.popup_window is not None and config.popup_window.winfo_exists():
         config.popup_window.lift()          
         config.popup_window.focus_force()   
@@ -31,103 +34,13 @@ def open_popup(func, title="Popup", size="370x300"):
         config.popup_window = None
         popup.destroy()
     popup.protocol("WM_DELETE_WINDOW", on_close)
-    func(popup)
+    func(popup, *args, **kwargs)
     return popup
 
 def lock_app(root, otp_entries):
     for widget in root.winfo_children():
         widget.destroy()
     build_lock_screen(root, otp_entries)
-
-def reset_password(parent):
-    parent.resizable(False, False)
-    frame = tk.Frame(parent, bg="#1e1e1e")
-    frame.pack(expand=True, fill="both")
-    root.unbind_all("<Return>")
-
-    def create_entry(label_text):
-        tk.Label(frame, text=label_text, bg="#1e1e1e", fg="white", font=("Segoe UI",10,"bold")).pack(pady=(10,5))
-        entry = tk.Entry(frame, show="*", font=("Segoe UI",10), justify="center")
-        entry.pack()
-        return entry
-
-    current_entry = create_entry("Enter current password:")
-    current_entry.focus_set()
-    new_entry = create_entry("New password:")
-    confirm_entry = create_entry("Confirm new password:")
-
-    error_label = tk.Label(frame, text="", bg="#1e1e1e", fg="red", font=("Segoe UI",9))
-    error_label.pack(pady=(10,0))
-
-    def perform_reset():
-        stored_hash = utils.get_stored_password()
-        current_pwd = current_entry.get()
-        current_hash = hashlib.sha256(current_pwd.encode()).hexdigest()
-        if current_hash != stored_hash:
-            error_label.config(text="Incorrect current password")
-        elif new_entry.get() != confirm_entry.get():
-            error_label.config(text="New passwords do not match")
-        elif len(new_entry.get()) < 4:
-            error_label.config(text="Password too short (min 4 chars)")
-        else:
-            new_pwd = new_entry.get()
-            if utils.reencrypt_all_data(current_pwd, new_pwd):
-                utils.save_password(new_pwd)
-                config.decrypt_key = new_pwd
-                parent.destroy()
-            else:
-                error_label.config(text="Failed to re-encrypt data")
-
-    reset_btn = tk.Button(frame, text="Reset Password", command=perform_reset,
-                          font=("Segoe UI",10), bg="#444", fg="white", relief="flat", activebackground="#666")
-    reset_btn.pack(pady=12)
-    utils.bind_enter(root, reset_btn)
-
-def edit_credentials_popup(parent):
-    parent.resizable(False, False)
-    frame = tk.Frame(parent, bg="#1e1e1e")
-    frame.pack(expand=True, fill="both", padx=20, pady=20)
-    
-    tk.Label(frame, text="Add New Credential", font=("Segoe UI", 12, "bold"), bg="#1e1e1e", fg="white").pack(pady=(0, 15))
-    
-    tk.Label(frame, text="Platform Name:", bg="#1e1e1e", fg="white").pack(anchor="w")
-    platform_entry = tk.Entry(frame, font=("Segoe UI", 10))
-    platform_entry.pack(fill="x", pady=(0, 10))
-    
-    tk.Label(frame, text="QR Code Image:", bg="#1e1e1e", fg="white").pack(anchor="w")
-    path_frame = tk.Frame(frame, bg="#1e1e1e")
-    path_frame.pack(fill="x")
-    
-    path_entry = tk.Entry(path_frame, font=("Segoe UI", 10))
-    path_entry.pack(side="left", fill="x", expand=True)
-    
-    def browse_file():
-        filename = filedialog.askopenfilename(title="Select QR Code", filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp")])
-        if filename:
-            path_entry.delete(0, tk.END)
-            path_entry.insert(0, filename)
-            
-    tk.Button(path_frame, text="Browse", command=browse_file, bg="#444", fg="white", relief="flat").pack(side="right", padx=(5, 0))
-    
-    error_label = tk.Label(frame, text="", bg="#1e1e1e", fg="red", font=("Segoe UI", 9))
-    error_label.pack(pady=10)
-    
-    def save_cred():
-        platform = platform_entry.get().strip()
-        path = path_entry.get().strip()
-        if not platform or not path:
-            error_label.config(text="Please fill all fields")
-            return
-        
-        success, msg = utils.add_credential(platform, path, config.decrypt_key)
-        if success:
-            parent.destroy()
-            new_entries = utils.load_otps_from_decrypted(utils.decode_encrypted_file())
-            build_main_ui(root, new_entries)
-        else:
-            error_label.config(text=msg)
-            
-    tk.Button(frame, text="Save Credential", command=save_cred, bg="#444", fg="white", relief="flat", font=("Segoe UI", 10, "bold")).pack(pady=10)
 
 def build_main_ui(root, otp_entries):
     for widget in root.winfo_children():
@@ -238,16 +151,21 @@ def build_main_ui(root, otp_entries):
 
             config.frames.append({"totp": totp_obj, "code_var": code_var, "time_var": time_var, "time_label": time_label})
 
+    # ---- FOOTER ----
     footer = tk.Frame(outer_frame, bg="#1e1e1e")
     footer.pack(side="bottom", fill="x")
 
     tk.Button(footer, text="🔄 Reset", font=("Segoe UI", 10),
               bg="#2b2b2b", fg="white", relief="flat", height=2,
-              command=lambda: open_popup(reset_password, title="Reset Password", size="300x300")).pack(side="left", fill="x", expand=True)
+              command=lambda: open_popup(reset_handler.reset_password_popup, title="Reset Password", size="350x400", root=root)).pack(side="left", fill="x", expand=True)
 
     tk.Button(footer, text="➕ Edit Creds", font=("Segoe UI", 10),
               bg="#2b2b2b", fg="white", relief="flat", height=2,
-              command=lambda: open_popup(edit_credentials_popup, title="Edit Credentials", size="350x350")).pack(side="left", fill="x", expand=True)
+              command=lambda: open_popup(creds_handler.edit_credentials_popup, title="Edit Credentials", size="350x350", root=root, build_main_ui_callback=build_main_ui)).pack(side="left", fill="x", expand=True)
+
+    tk.Button(footer, text="📥 Download", font=("Segoe UI", 10),
+              bg="#2b2b2b", fg="white", relief="flat", height=2,
+              command=export_handler.handle_download).pack(side="left", fill="x", expand=True)
 
     if otp_entries:
         update_totps(root)

@@ -1,6 +1,4 @@
 import tkinter as tk
-import pyotp
-import time
 import pyperclip
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse, unquote
 import os
@@ -99,69 +97,6 @@ def get_qr_image(enc_img_path, key, blur=True):
     except Exception:
         return None
 
-def add_credential(platform, qr_path, key):
-    if not os.path.exists(qr_path):
-        return False, "File not found"
-    with open(qr_path, 'rb') as f:
-        original_data = f.read()
-    uri = read_qr_from_bytes(original_data)
-    if not uri:
-        return False, "Could not read QR code from image"
-    crypto = aes.Crypto(key)
-    
-    qr_folder = os.path.join(config.APP_FOLDER, "qrs")
-    os.makedirs(qr_folder, exist_ok=True)
-    
-    enc_img_data = crypto.encrypt_bytes(original_data)
-    safe_name = hashlib.md5(f"{platform}{time.time()}".encode()).hexdigest()
-    enc_img_path = os.path.join(qr_folder, f"{safe_name}.enc")
-    
-    with open(enc_img_path, 'wb') as f:
-        f.write(enc_img_data)
-    line_to_encrypt = f"{platform}: {enc_img_path}"
-    encrypted_line = crypto.encrypt_aes(line_to_encrypt)
-    
-    with open(config.ENCODED_FILE, 'a') as f:
-        f.write(encrypted_line + "\n")
-    return True, "Credential added successfully"
-
-def reencrypt_all_data(old_key, new_key):
-    if not os.path.exists(config.ENCODED_FILE):
-        return True
-    old_crypto = aes.Crypto(old_key)
-    new_crypto = aes.Crypto(new_key)
-    new_lines = []
-    try:
-        with open(config.ENCODED_FILE, 'r') as f:
-            lines = f.readlines()
-            
-        for line in lines:
-            line = line.strip()
-            if not line: continue
-            
-            decrypted_line = old_crypto.decrypt_aes(line)
-            if ': ' not in decrypted_line: continue
-            platform, enc_img_path = decrypted_line.split(': ', 1)
-            
-            if os.path.exists(enc_img_path):
-                with open(enc_img_path, 'rb') as img_f:
-                    old_enc_data = img_f.read()
-                
-                raw_img_data = old_crypto.decrypt_bytes(old_enc_data)
-                new_enc_data = new_crypto.encrypt_bytes(raw_img_data)
-                
-                with open(enc_img_path, 'wb') as img_f:
-                    img_f.write(new_enc_data)
-            new_line = new_crypto.encrypt_aes(f"{platform}: {enc_img_path}")
-            new_lines.append(new_line)
-        with open(config.ENCODED_FILE, 'w') as f:
-            for nl in new_lines:
-                f.write(nl + "\n")
-        return True
-    except Exception as e:
-        print(f"Re-encryption failed: {e}")
-        return False
-
 def delete_credential(enc_img_path_to_delete, key):
     if not os.path.exists(config.ENCODED_FILE):
         return False
@@ -183,11 +118,10 @@ def delete_credential(enc_img_path_to_delete, key):
             platform, enc_img_path = decrypted_line.split(': ', 1)
             
             if enc_img_path == enc_img_path_to_delete:
-                # Delete the encrypted image file
                 if os.path.exists(enc_img_path):
                     os.remove(enc_img_path)
                 deleted = True
-                continue # Skip adding this line to new_lines
+                continue
             
             new_lines.append(line)
             
