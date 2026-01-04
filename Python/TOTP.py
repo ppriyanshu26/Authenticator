@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import filedialog
 import pyotp
 import time
 import hashlib
@@ -78,6 +79,53 @@ def reset_password(parent):
     reset_btn.pack(pady=12)
     utils.bind_enter(root, reset_btn)
 
+def edit_credentials_popup(parent):
+    parent.resizable(False, False)
+    frame = tk.Frame(parent, bg="#1e1e1e")
+    frame.pack(expand=True, fill="both", padx=20, pady=20)
+    
+    tk.Label(frame, text="Add New Credential", font=("Segoe UI", 12, "bold"), bg="#1e1e1e", fg="white").pack(pady=(0, 15))
+    
+    tk.Label(frame, text="Platform Name:", bg="#1e1e1e", fg="white").pack(anchor="w")
+    platform_entry = tk.Entry(frame, font=("Segoe UI", 10))
+    platform_entry.pack(fill="x", pady=(0, 10))
+    
+    tk.Label(frame, text="QR Code Image:", bg="#1e1e1e", fg="white").pack(anchor="w")
+    path_frame = tk.Frame(frame, bg="#1e1e1e")
+    path_frame.pack(fill="x")
+    
+    path_entry = tk.Entry(path_frame, font=("Segoe UI", 10))
+    path_entry.pack(side="left", fill="x", expand=True)
+    
+    def browse_file():
+        filename = filedialog.askopenfilename(title="Select QR Code", filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp")])
+        if filename:
+            path_entry.delete(0, tk.END)
+            path_entry.insert(0, filename)
+            
+    tk.Button(path_frame, text="Browse", command=browse_file, bg="#444", fg="white", relief="flat").pack(side="right", padx=(5, 0))
+    
+    error_label = tk.Label(frame, text="", bg="#1e1e1e", fg="red", font=("Segoe UI", 9))
+    error_label.pack(pady=10)
+    
+    def save_cred():
+        platform = platform_entry.get().strip()
+        path = path_entry.get().strip()
+        if not platform or not path:
+            error_label.config(text="Please fill all fields")
+            return
+        
+        success, msg = utils.add_credential(platform, path, config.decrypt_key)
+        if success:
+            parent.destroy()
+            # Refresh UI
+            new_entries = utils.load_otps_from_decrypted(utils.decode_encrypted_file())
+            build_main_ui(root, new_entries)
+        else:
+            error_label.config(text=msg)
+            
+    tk.Button(frame, text="Save Credential", command=save_cred, bg="#444", fg="white", relief="flat", font=("Segoe UI", 10, "bold")).pack(pady=10)
+
 # ------------------- Main UI -------------------
 def build_main_ui(root, otp_entries):
     for widget in root.winfo_children():
@@ -118,15 +166,23 @@ def build_main_ui(root, otp_entries):
         tk.Label(config.inner_frame, text="⚠️ No OTPs Loaded", font=("Segoe UI", 11, "bold"),
                  fg="red", bg="#1e1e1e").pack(pady=20)
     else:
-        for display_name, uri in otp_entries:
+        for display_name, uri, enc_img_path in otp_entries:
             cleaned_uri, issuer, username = utils.clean_uri(uri)
             totp_obj = pyotp.TOTP(pyotp.parse_uri(cleaned_uri).secret)
 
             card = tk.Frame(config.inner_frame, bg="#2b2b2b", padx=12, pady=12)
             card.pack(fill="x", padx=12, pady=10)
 
-            tk.Label(card, text=display_name, font=("Segoe UI", 12, "bold"),
-                     bg="#2b2b2b", fg="#ffffff", anchor="w").pack(fill="x")
+            header = tk.Frame(card, bg="#2b2b2b")
+            header.pack(fill="x")
+
+            tk.Label(header, text=display_name, font=("Segoe UI", 12, "bold"),
+                     bg="#2b2b2b", fg="#ffffff", anchor="w").pack(side="left")
+            
+            qr_toggle_btn = tk.Button(header, text="View QR", font=("Segoe UI", 8),
+                                     bg="#444", fg="white", relief="flat", padx=5)
+            qr_toggle_btn.pack(side="right")
+
             tk.Label(card, text=username, font=("Segoe UI", 9),
                      fg="#aaaaaa", bg="#2b2b2b", anchor="w").pack(fill="x")
 
@@ -146,6 +202,42 @@ def build_main_ui(root, otp_entries):
                       bg="#444", fg="white", activebackground="#666", relief="flat",
                       command=lambda v=code_var: utils.copy_and_toast(v, root)).pack(side="right")
 
+            # QR Dropdown Frame
+            qr_frame = tk.Frame(card, bg="#2b2b2b")
+            
+            def toggle_qr(event=None, f=qr_frame, path=enc_img_path):
+                if f.winfo_viewable():
+                    f.pack_forget()
+                else:
+                    f.pack(fill="x", pady=(10, 0))
+                    show_blurred_qr(f, path)
+
+            qr_toggle_btn.config(command=toggle_qr)
+
+            def show_blurred_qr(f, path):
+                for w in f.winfo_children(): w.destroy()
+                img_tk = utils.get_qr_image(path, config.decrypt_key, blur=True)
+                if img_tk:
+                    lbl = tk.Label(f, image=img_tk, bg="#2b2b2b", cursor="hand2")
+                    lbl.image = img_tk # Keep reference
+                    lbl.pack()
+                    
+                    hint = tk.Label(f, text="Tap to view QR", font=("Segoe UI", 8, "italic"),
+                                   bg="#2b2b2b", fg="#888888")
+                    hint.pack(pady=(2, 0))
+                    
+                    def on_click(e, p=path, l=lbl, h=hint):
+                        reveal_qr(l, p)
+                        h.destroy()
+
+                    lbl.bind("<Button-1>", on_click)
+
+            def reveal_qr(label, path):
+                img_tk = utils.get_qr_image(path, config.decrypt_key, blur=False)
+                if img_tk:
+                    label.config(image=img_tk)
+                    label.image = img_tk
+
             config.frames.append({
                 "totp": totp_obj,
                 "code_var": code_var,
@@ -160,6 +252,10 @@ def build_main_ui(root, otp_entries):
     tk.Button(footer, text="🔄 Reset", font=("Segoe UI", 10),
               bg="#2b2b2b", fg="white", relief="flat", height=2,
               command=lambda: open_popup(reset_password, title="Reset Password", size="300x300")).pack(side="left", fill="x", expand=True)
+
+    tk.Button(footer, text="➕ Edit Creds", font=("Segoe UI", 10),
+              bg="#2b2b2b", fg="white", relief="flat", height=2,
+              command=lambda: open_popup(edit_credentials_popup, title="Edit Credentials", size="350x350")).pack(side="left", fill="x", expand=True)
 
     if otp_entries:
         update_totps(root)

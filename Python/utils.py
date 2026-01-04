@@ -7,10 +7,23 @@ import os
 import hashlib
 import keyring
 import config
+import cv2
+import numpy as np
 import aes
+from PIL import Image, ImageTk, ImageFilter
+import io
+
+def read_qr_from_bytes(image_bytes):
+    nparr = np.frombuffer(image_bytes, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    if img is None: return None
+    detector = cv2.QRCodeDetector()
+    data, _, _ = detector.detectAndDecode(img)
+    return data
 
 def load_otps_from_decrypted(decrypted_otps):
-    return [(name.strip(), uri.strip()) for name, uri in decrypted_otps if "otpauth://" in uri]
+    entries = [(name.strip(), uri.strip(), img_path) for name, uri, img_path in decrypted_otps if "otpauth://" in uri]
+    return sorted(entries, key=lambda x: x[0].lower())
 
 def clean_uri(uri):
     parsed = urlparse(uri)
@@ -52,12 +65,77 @@ def decode_encrypted_file():
     try:
         with open(config.ENCODED_FILE, 'r') as infile:
             for line in infile:
-                if ',' not in line: continue
-                platform, encrypted_url = map(str.strip, line.split(',', 1))
-                decrypted = crypto.decrypt_aes(encrypted_url)
-                decrypted_otps.append((platform, decrypted))
+                line = line.strip()
+                if not line: continue
+                try:
+                    # Decrypt the whole line: "platform: encrypted_img_path"
+                    decrypted_line = crypto.decrypt_aes(line)
+                    if ': ' not in decrypted_line: continue
+                    platform, enc_img_path = decrypted_line.split(': ', 1)
+                    
+                    # Decrypt the image file to get URI
+                    if os.path.exists(enc_img_path):
+                        with open(enc_img_path, 'rb') as f:
+                            enc_data = f.read()
+                        img_bytes = crypto.decrypt_bytes(enc_data)
+                        uri = read_qr_from_bytes(img_bytes)
+                        if uri:
+                            decrypted_otps.append((platform, uri, enc_img_path))
+                except Exception:
+                    continue
     except FileNotFoundError: pass
     return decrypted_otps
+
+def get_qr_image(enc_img_path, key, blur=True):
+    if not os.path.exists(enc_img_path): return None
+    crypto = aes.Crypto(key)
+    try:
+        with open(enc_img_path, 'rb') as f:
+            enc_data = f.read()
+        img_bytes = crypto.decrypt_bytes(enc_data)
+        img = Image.open(io.BytesIO(img_bytes))
+        img = img.resize((200, 200), Image.Resampling.LANCZOS)
+        if blur:
+            img = img.filter(ImageFilter.GaussianBlur(radius=15))
+        return ImageTk.PhotoImage(img)
+    except Exception:
+        return None
+
+def add_credential(platform, qr_path, key):
+    if not os.path.exists(qr_path):
+        return False, "File not found"
+    
+    # Verify QR code is readable
+    with open(qr_path, 'rb') as f:
+        original_data = f.read()
+    
+    uri = read_qr_from_bytes(original_data)
+    if not uri:
+        return False, "Could not read QR code from image"
+    
+    crypto = aes.Crypto(key)
+    
+    # Create QRs folder
+    qr_folder = os.path.join(config.APP_FOLDER, "qrs")
+    os.makedirs(qr_folder, exist_ok=True)
+    
+    # Encrypt image file
+    enc_img_data = crypto.encrypt_bytes(original_data)
+    # Use a hash of the platform + timestamp to avoid collisions
+    safe_name = hashlib.md5(f"{platform}{time.time()}".encode()).hexdigest()
+    enc_img_path = os.path.join(qr_folder, f"{safe_name}.enc")
+    
+    with open(enc_img_path, 'wb') as f:
+        f.write(enc_img_data)
+    
+    # Encrypt line for creds.txt
+    line_to_encrypt = f"{platform}: {enc_img_path}"
+    encrypted_line = crypto.encrypt_aes(line_to_encrypt)
+    
+    with open(config.ENCODED_FILE, 'a') as f:
+        f.write(encrypted_line + "\n")
+    
+    return True, "Credential added successfully"
 
 def bind_enter(root, button):
     root.unbind_all("<Return>")
