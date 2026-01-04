@@ -6,7 +6,6 @@ import hashlib
 import config
 import utils
 
-# ------------------- Popups -------------------
 def open_popup(func, title="Popup", size="370x300"):
     if config.popup_window is not None and config.popup_window.winfo_exists():
         config.popup_window.lift()          
@@ -40,7 +39,6 @@ def lock_app(root, otp_entries):
         widget.destroy()
     build_lock_screen(root, otp_entries)
 
-# ------------------- Reset Password -------------------
 def reset_password(parent):
     parent.resizable(False, False)
     frame = tk.Frame(parent, bg="#1e1e1e")
@@ -63,7 +61,8 @@ def reset_password(parent):
 
     def perform_reset():
         stored_hash = utils.get_stored_password()
-        current_hash = hashlib.sha256(current_entry.get().encode()).hexdigest()
+        current_pwd = current_entry.get()
+        current_hash = hashlib.sha256(current_pwd.encode()).hexdigest()
         if current_hash != stored_hash:
             error_label.config(text="Incorrect current password")
         elif new_entry.get() != confirm_entry.get():
@@ -71,8 +70,13 @@ def reset_password(parent):
         elif len(new_entry.get()) < 4:
             error_label.config(text="Password too short (min 4 chars)")
         else:
-            utils.save_password(new_entry.get())
-            parent.destroy()
+            new_pwd = new_entry.get()
+            if utils.reencrypt_all_data(current_pwd, new_pwd):
+                utils.save_password(new_pwd)
+                config.decrypt_key = new_pwd
+                parent.destroy()
+            else:
+                error_label.config(text="Failed to re-encrypt data")
 
     reset_btn = tk.Button(frame, text="Reset Password", command=perform_reset,
                           font=("Segoe UI",10), bg="#444", fg="white", relief="flat", activebackground="#666")
@@ -118,7 +122,6 @@ def edit_credentials_popup(parent):
         success, msg = utils.add_credential(platform, path, config.decrypt_key)
         if success:
             parent.destroy()
-            # Refresh UI
             new_entries = utils.load_otps_from_decrypted(utils.decode_encrypted_file())
             build_main_ui(root, new_entries)
         else:
@@ -126,12 +129,10 @@ def edit_credentials_popup(parent):
             
     tk.Button(frame, text="Save Credential", command=save_cred, bg="#444", fg="white", relief="flat", font=("Segoe UI", 10, "bold")).pack(pady=10)
 
-# ------------------- Main UI -------------------
 def build_main_ui(root, otp_entries):
     for widget in root.winfo_children():
         widget.destroy()
 
-    # ---- TOP FIXED BAR ----
     top_bar = tk.Frame(root, bg="#1e1e1e")
     top_bar.pack(side="top", fill="x")
 
@@ -140,7 +141,6 @@ def build_main_ui(root, otp_entries):
                      command=lambda: lock_app(root, otp_entries))
     lock_btn.pack(pady=6)
 
-    # ---- MAIN CONTENT ----
     outer_frame = tk.Frame(root, bg="#1e1e1e")
     outer_frame.pack(fill="both", expand=True)
 
@@ -161,7 +161,6 @@ def build_main_ui(root, otp_entries):
 
     config.frames.clear()
 
-    # ---- OTP LIST ----
     if not otp_entries:
         tk.Label(config.inner_frame, text="⚠️ No OTPs Loaded", font=("Segoe UI", 11, "bold"),
                  fg="red", bg="#1e1e1e").pack(pady=20)
@@ -202,7 +201,6 @@ def build_main_ui(root, otp_entries):
                       bg="#444", fg="white", activebackground="#666", relief="flat",
                       command=lambda v=code_var: utils.copy_and_toast(v, root)).pack(side="right")
 
-            # QR Dropdown Frame
             qr_frame = tk.Frame(card, bg="#2b2b2b")
             
             def toggle_qr(event=None, f=qr_frame, path=enc_img_path):
@@ -219,7 +217,7 @@ def build_main_ui(root, otp_entries):
                 img_tk = utils.get_qr_image(path, config.decrypt_key, blur=True)
                 if img_tk:
                     lbl = tk.Label(f, image=img_tk, bg="#2b2b2b", cursor="hand2")
-                    lbl.image = img_tk # Keep reference
+                    lbl.image = img_tk 
                     lbl.pack()
                     
                     hint = tk.Label(f, text="Tap to view QR", font=("Segoe UI", 8, "italic"),
@@ -245,7 +243,6 @@ def build_main_ui(root, otp_entries):
                 "time_label": time_label
             })
 
-    # ---- FOOTER ----
     footer = tk.Frame(outer_frame, bg="#1e1e1e")
     footer.pack(side="bottom", fill="x")
 
@@ -272,7 +269,6 @@ def update_totps(root):
         except tk.TclError: continue
     root.after(1000, lambda: update_totps(root))
 
-# ------------------- Password Screens -------------------
 def build_create_password_screen(root, otp_entries):
     frame = tk.Frame(root, bg="#1e1e1e"); frame.pack(expand=True)
     root.unbind_all("<Return>")
@@ -296,7 +292,6 @@ def check_password(root, entry, error_label, otp_entries, lock_frame):
     entered_password = entry.get()
     entered_hash = hashlib.sha256(entered_password.encode()).hexdigest()
     
-    # Check if password matches
     if entered_hash == stored_password:
         config.decrypt_key = entered_password
         lock_frame.destroy()
@@ -317,7 +312,6 @@ def build_lock_screen(root, otp_entries):
                            command=lambda: check_password(root, entry, error_label, otp_entries, frame))
     unlock_btn.pack(pady=10); utils.bind_enter(root, unlock_btn)
 
-# ------------------- Main -------------------
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("TOTP Authenticator v2.0.0")
