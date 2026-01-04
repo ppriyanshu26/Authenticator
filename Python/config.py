@@ -3,7 +3,7 @@ import sys
 import getpass
 
 if sys.platform == "win32":
-    BASE_APP_DIR = os.getenv("APPDATA")
+    BASE_APP_DIR = os.getenv("LOCALAPPDATA")
 elif sys.platform == "darwin":
     BASE_APP_DIR = os.path.expanduser("~/Library/Application Support")
 elif sys.platform.startswith("linux"):
@@ -20,7 +20,6 @@ USERNAME = getpass.getuser()
 
 decrypt_key = None
 toast_label = None
-canvas = None
 inner_frame = None
 popup_window = None
 frames = []

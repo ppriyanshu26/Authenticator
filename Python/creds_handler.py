@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog
+import customtkinter as ctk
 import os
 import time
 import hashlib
@@ -33,9 +34,7 @@ def add_credential(platform, username=None, secret=None, qr_path=None, key=None)
             f.write(enc_img_data)
     elif secret and username:
         try:
-            # Clean secret (remove spaces)
             secret = secret.replace(" ", "").upper()
-            # Test if secret is valid base32
             pyotp.TOTP(secret).now()
             uri = pyotp.totp.TOTP(secret).provisioning_uri(name=username, issuer_name=platform)
         except Exception:
@@ -53,29 +52,29 @@ def add_credential(platform, username=None, secret=None, qr_path=None, key=None)
 
 def edit_credentials_popup(parent, root, build_main_ui_callback):
     parent.resizable(False, False)
-    parent.geometry("370x450")
-    frame = tk.Frame(parent, bg="#1e1e1e")
+    parent.geometry("370x500")
+    frame = ctk.CTkFrame(parent, fg_color="#1e1e1e", corner_radius=0)
     frame.pack(expand=True, fill="both", padx=20, pady=20)
     
-    tk.Label(frame, text="Add New Credential", font=("Segoe UI", 12, "bold"), bg="#1e1e1e", fg="white").pack(pady=(0, 15))
+    ctk.CTkLabel(frame, text="Add New Credential", font=("Segoe UI", 16, "bold"), text_color="white").pack(pady=(0, 15))
     
-    tk.Label(frame, text="Platform Name:", bg="#1e1e1e", fg="white").pack(anchor="w")
-    platform_entry = tk.Entry(frame, font=("Segoe UI", 10))
+    ctk.CTkLabel(frame, text="Platform Name:", text_color="white").pack(anchor="w")
+    platform_entry = ctk.CTkEntry(frame, font=("Segoe UI", 12), height=35)
     platform_entry.pack(fill="x", pady=(0, 10))
 
-    tk.Label(frame, text="Username (for manual entry):", bg="#1e1e1e", fg="white").pack(anchor="w")
-    user_entry = tk.Entry(frame, font=("Segoe UI", 10))
+    ctk.CTkLabel(frame, text="Username (for manual entry):", text_color="white").pack(anchor="w")
+    user_entry = ctk.CTkEntry(frame, font=("Segoe UI", 12), height=35)
     user_entry.pack(fill="x", pady=(0, 10))
 
-    tk.Label(frame, text="Secret Key (for manual entry):", bg="#1e1e1e", fg="white").pack(anchor="w")
-    secret_entry = tk.Entry(frame, font=("Segoe UI", 10))
+    ctk.CTkLabel(frame, text="Secret Key (for manual entry):", text_color="white").pack(anchor="w")
+    secret_entry = ctk.CTkEntry(frame, font=("Segoe UI", 12), height=35)
     secret_entry.pack(fill="x", pady=(0, 10))
     
-    tk.Label(frame, text="OR QR Code Image:", bg="#1e1e1e", fg="white").pack(anchor="w")
-    path_frame = tk.Frame(frame, bg="#1e1e1e")
+    ctk.CTkLabel(frame, text="OR QR Code Image:", text_color="white").pack(anchor="w")
+    path_frame = ctk.CTkFrame(frame, fg_color="transparent")
     path_frame.pack(fill="x")
     
-    path_entry = tk.Entry(path_frame, font=("Segoe UI", 10))
+    path_entry = ctk.CTkEntry(path_frame, font=("Segoe UI", 12), height=35)
     path_entry.pack(side="left", fill="x", expand=True)
     
     def browse_file():
@@ -84,9 +83,9 @@ def edit_credentials_popup(parent, root, build_main_ui_callback):
             path_entry.delete(0, tk.END)
             path_entry.insert(0, filename)
             
-    tk.Button(path_frame, text="Browse", command=browse_file, bg="#444", fg="white", relief="flat").pack(side="right", padx=(5, 0))
+    ctk.CTkButton(path_frame, text="Browse", width=80, height=35, command=browse_file, fg_color="#444", text_color="white", hover_color="#555").pack(side="right", padx=(5, 0))
     
-    error_label = tk.Label(frame, text="", bg="#1e1e1e", fg="red", font=("Segoe UI", 9))
+    error_label = ctk.CTkLabel(frame, text="", text_color="red", font=("Segoe UI", 11))
     error_label.pack(pady=10)
     
     def save_cred():
@@ -96,7 +95,7 @@ def edit_credentials_popup(parent, root, build_main_ui_callback):
         path = path_entry.get().strip()
         
         if not platform:
-            error_label.config(text="Platform name is required")
+            error_label.configure(text="Platform name is required")
             return
         
         success, msg = add_credential(platform, username, secret, path, config.decrypt_key)
@@ -105,7 +104,7 @@ def edit_credentials_popup(parent, root, build_main_ui_callback):
             new_entries = utils.load_otps_from_decrypted(utils.decode_encrypted_file())
             build_main_ui_callback(root, new_entries)
         else:
-            error_label.config(text=msg)
+            error_label.configure(text=msg)
             
-    tk.Button(frame, text="Save Credential", command=save_cred, bg="#444", fg="white", relief="flat", font=("Segoe UI", 10, "bold")).pack(pady=10)
+    ctk.CTkButton(frame, text="Save Credential", height=40, command=save_cred, fg_color="#444", text_color="white", hover_color="#666", font=("Segoe UI", 12, "bold")).pack(pady=10)
 

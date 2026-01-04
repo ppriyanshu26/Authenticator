@@ -1,4 +1,5 @@
 import tkinter as tk
+import customtkinter as ctk
 import pyperclip
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse, unquote
 import os
@@ -40,21 +41,10 @@ def clean_uri(uri):
 def copy_and_toast(var, root):
     pyperclip.copy(var.get())
     if config.toast_label: config.toast_label.destroy()
-    config.toast_label = tk.Label(root, text="✅ Copied to clipboard", bg="#444", fg="white",
-                           font=("Segoe UI", 10), padx=12, pady=6)
-    config.toast_label.place(relx=0.5, rely=1.0, anchor='s')
+    config.toast_label = ctk.CTkLabel(root, text="✅ Copied to clipboard", fg_color="#444", text_color="white",
+                           font=("Segoe UI", 12), corner_radius=8, padx=12, pady=6)
+    config.toast_label.place(relx=0.5, rely=0.9, anchor='s')
     root.after(1500, config.toast_label.destroy)
-
-def on_mousewheel(event):
-    if config.canvas:
-        # Get current scroll position
-        top, bottom = config.canvas.yview()
-        # Prevent scrolling past boundaries
-        if event.delta > 0 and top <= 0:
-            return  # Already at top, don't scroll up
-        if event.delta < 0 and bottom >= 1:
-            return  # Already at bottom, don't scroll down
-        config.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
 def save_password(password):
     hashed = hashlib.sha256(password.encode()).hexdigest()
@@ -105,18 +95,24 @@ def get_qr_image(enc_img_path, key, blur=True):
         img = img.resize((200, 200), Image.Resampling.LANCZOS)
         if blur:
             img = img.filter(ImageFilter.GaussianBlur(radius=15))
-        return ImageTk.PhotoImage(img)
+        return img
     except Exception:
         return None
 
-def delete_credential(platform_to_delete, uri_to_delete, key):
+def delete_credential(platform_to_delete, uri_to_delete, key, path_to_delete=None):
     if not os.path.exists(config.ENCODED_FILE):
+        print(f"Error: Encoded file not found at {config.ENCODED_FILE}")
         return False
     
     crypto = aes.Crypto(key)
     new_lines = []
     deleted = False
     
+    platform_to_delete = platform_to_delete.strip()
+    uri_to_delete = uri_to_delete.strip()
+    if path_to_delete:
+        path_to_delete = path_to_delete.strip()
+
     try:
         with open(config.ENCODED_FILE, 'r') as f:
             lines = f.readlines()
@@ -125,24 +121,36 @@ def delete_credential(platform_to_delete, uri_to_delete, key):
             line = line.strip()
             if not line: continue
             
-            decrypted_line = crypto.decrypt_aes(line)
-            platform, uri, enc_img_path = None, None, None
+            try:
+                decrypted_line = crypto.decrypt_aes(line)
+            except Exception as e:
+                print(f"Warning: Failed to decrypt a line: {e}")
+                new_lines.append(line)
+                continue
 
+            platform, uri, enc_img_path = None, None, None
             if '|' in decrypted_line:
                 parts = decrypted_line.split('|')
                 if len(parts) == 3:
-                    platform, uri, enc_img_path = parts
+                    platform, uri, enc_img_path = [p.strip() for p in parts]
             elif ': ' in decrypted_line:
-                platform, enc_img_path = decrypted_line.split(': ', 1)
-                # For legacy, we might need to read the URI to match, 
-                # but usually platform + path is enough.
-                if enc_img_path == uri_to_delete: # In legacy, we passed path as 2nd arg
-                     uri = uri_to_delete 
+                parts = decrypted_line.split(': ', 1)
+                platform = parts[0].strip()
+                enc_img_path = parts[1].strip()
 
-            # Match by platform and uri (or path for legacy)
-            if platform == platform_to_delete and (uri == uri_to_delete or enc_img_path == uri_to_delete):
+            is_match = False
+            if platform == platform_to_delete:
+                if uri and uri == uri_to_delete:
+                    is_match = True
+                elif enc_img_path and (enc_img_path == uri_to_delete or (path_to_delete and enc_img_path == path_to_delete)):
+                    is_match = True
+
+            if is_match:
                 if enc_img_path and enc_img_path != "NONE" and os.path.exists(enc_img_path):
-                    os.remove(enc_img_path)
+                    try:
+                        os.remove(enc_img_path)
+                    except Exception as e:
+                        print(f"Warning: Failed to remove QR file {enc_img_path}: {e}")
                 deleted = True
                 continue
             
@@ -153,8 +161,12 @@ def delete_credential(platform_to_delete, uri_to_delete, key):
                 for nl in new_lines:
                     f.write(nl + "\n")
             return True
+        else:
+            print(f"Error: No matching credential found for '{platform_to_delete}'")
     except Exception as e:
-        print(f"Deletion failed: {e}")
+        print(f"Deletion failed with exception: {e}")
+        import traceback
+        traceback.print_exc()
         
     return False
 

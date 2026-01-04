@@ -1,4 +1,5 @@
 import tkinter as tk
+import customtkinter as ctk
 import hashlib
 import os
 import config
@@ -21,21 +22,54 @@ def reencrypt_all_data(old_key, new_key):
             line = line.strip()
             if not line: continue
             
-            decrypted_line = old_crypto.decrypt_aes(line)
-            if ': ' not in decrypted_line: continue
-            platform, enc_img_path = decrypted_line.split(': ', 1)
+            try:
+                decrypted_line = old_crypto.decrypt_aes(line)
+            except Exception:
+                print("Warning: Could not decrypt a line during re-encryption. Skipping.")
+                continue
+
+            platform, uri, enc_img_path = None, None, None
             
-            if os.path.exists(enc_img_path):
-                with open(enc_img_path, 'rb') as img_f:
-                    old_enc_data = img_f.read()
-                
-                raw_img_data = old_crypto.decrypt_bytes(old_enc_data)
-                new_enc_data = new_crypto.encrypt_bytes(raw_img_data)
-                
-                with open(enc_img_path, 'wb') as img_f:
-                    img_f.write(new_enc_data)
+            if '|' in decrypted_line:
+                parts = decrypted_line.split('|')
+                if len(parts) == 3:
+                    platform, uri, enc_img_path = [p.strip() for p in parts]
+            if '|' in decrypted_line:
+                parts = decrypted_line.split('|')
+                if len(parts) == 3:
+                    platform, uri, enc_img_path = [p.strip() for p in parts]
+            elif ': ' in decrypted_line:
+                parts = decrypted_line.split(': ', 1)
+                platform = parts[0].strip()
+                enc_img_path = parts[1].strip()
+                if os.path.exists(enc_img_path):
+                    try:
+                        with open(enc_img_path, 'rb') as f_img:
+                            old_enc_data = f_img.read()
+                        raw_img_data = old_crypto.decrypt_bytes(old_enc_data)
+                        uri = utils.read_qr_from_bytes(raw_img_data)
+                    except Exception as e:
+                        print(f"Warning: Failed to recover URI from legacy image {enc_img_path}: {e}")
+                        print(f"Warning: Failed to recover URI from legacy image {enc_img_path}: {e}")
             
-            new_line = new_crypto.encrypt_aes(f"{platform}: {enc_img_path}")
+            if not platform:
+                continue
+
+            if enc_img_path and enc_img_path != "NONE" and os.path.exists(enc_img_path):
+                try:
+                    with open(enc_img_path, 'rb') as img_f:
+                        old_enc_data = img_f.read()
+                    
+                    raw_img_data = old_crypto.decrypt_bytes(old_enc_data)
+                    new_enc_data = new_crypto.encrypt_bytes(raw_img_data)
+                    
+                    with open(enc_img_path, 'wb') as img_f:
+                        img_f.write(new_enc_data)
+                except Exception as e:
+                    print(f"Warning: Failed to re-encrypt image {enc_img_path}: {e}")
+
+            new_line_content = f"{platform}|{uri if uri else ''}|{enc_img_path if enc_img_path else 'NONE'}"
+            new_line = new_crypto.encrypt_aes(new_line_content)
             new_lines.append(new_line)
             
         with open(config.ENCODED_FILE, 'w') as f:
@@ -44,18 +78,20 @@ def reencrypt_all_data(old_key, new_key):
         return True
     except Exception as e:
         print(f"Re-encryption failed: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
-def reset_password_popup(parent, root):
+def reset_password_popup(parent, root, otp_entries, build_main_ui_callback):
     parent.resizable(False, False)
-    frame = tk.Frame(parent, bg="#1e1e1e")
+    frame = ctk.CTkFrame(parent, fg_color="#1e1e1e", corner_radius=0)
     frame.pack(expand=True, fill="both")
     root.unbind_all("<Return>")
 
     def create_entry(label_text):
-        tk.Label(frame, text=label_text, bg="#1e1e1e", fg="white", font=("Segoe UI", 12, "bold")).pack(pady=(15, 5))
-        entry = tk.Entry(frame, show="*", font=("Segoe UI", 12), justify="center", width=25)
-        entry.pack(ipady=3)
+        ctk.CTkLabel(frame, text=label_text, text_color="white", font=("Segoe UI", 14, "bold")).pack(pady=(15, 5))
+        entry = ctk.CTkEntry(frame, show="*", font=("Segoe UI", 14), justify="center", width=250, height=40)
+        entry.pack()
         return entry
 
     current_entry = create_entry("Enter current password:")
@@ -63,7 +99,7 @@ def reset_password_popup(parent, root):
     new_entry = create_entry("New password:")
     confirm_entry = create_entry("Confirm new password:")
 
-    error_label = tk.Label(frame, text="", bg="#1e1e1e", fg="red", font=("Segoe UI", 10))
+    error_label = ctk.CTkLabel(frame, text="", text_color="red", font=("Segoe UI", 12))
     error_label.pack(pady=(15, 0))
 
     def perform_reset():
@@ -71,22 +107,23 @@ def reset_password_popup(parent, root):
         current_pwd = current_entry.get()
         current_hash = hashlib.sha256(current_pwd.encode()).hexdigest()
         if current_hash != stored_hash:
-            error_label.config(text="Incorrect current password")
+            error_label.configure(text="Incorrect current password")
         elif new_entry.get() != confirm_entry.get():
-            error_label.config(text="New passwords do not match")
+            error_label.configure(text="New passwords do not match")
         elif len(new_entry.get()) < 4:
-            error_label.config(text="Password too short (min 4 chars)")
+            error_label.configure(text="Password too short (min 4 chars)")
         else:
             new_pwd = new_entry.get()
             if reencrypt_all_data(current_pwd, new_pwd):
                 utils.save_password(new_pwd)
                 config.decrypt_key = new_pwd
                 parent.destroy()
+                otp_entries[:] = utils.load_otps_from_decrypted(utils.decode_encrypted_file())
+                build_main_ui_callback(root, otp_entries)
             else:
-                error_label.config(text="Failed to re-encrypt data")
+                error_label.configure(text="Failed to re-encrypt data")
 
-    reset_btn = tk.Button(frame, text="Reset Password", command=perform_reset,
-                          font=("Segoe UI", 12, "bold"), bg="#444", fg="white", 
-                          relief="flat", activebackground="#666", padx=20, pady=5)
+    reset_btn = ctk.CTkButton(frame, text="Reset Password", command=perform_reset,
+                          font=("Segoe UI", 14, "bold"), width=200, height=45)
     reset_btn.pack(pady=20)
     utils.bind_enter(root, reset_btn)
