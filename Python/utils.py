@@ -5,12 +5,9 @@ import pyperclip
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse, unquote
 import os
 import hashlib
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives import padding
-from cryptography.hazmat.backends import default_backend
-import base64
 import keyring
 import config
+import aes
 
 def load_otps_from_decrypted(decrypted_otps):
     return [(name.strip(), uri.strip()) for name, uri in decrypted_otps if "otpauth://" in uri]
@@ -48,35 +45,17 @@ def save_password(password):
 def get_stored_password():
     return keyring.get_password(config.SERVICE_NAME, config.USERNAME)
 
-def decrypt_aes256(ciphertext_b64, key_str):
-    key = hashlib.sha256(key_str.encode()).digest()
-    raw = base64.urlsafe_b64decode(ciphertext_b64)
-    iv, ciphertext = raw[:16], raw[16:]
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
-    decryptor = cipher.decryptor()
-    padded_plaintext = decryptor.update(ciphertext) + decryptor.finalize()
-    unpadder = padding.PKCS7(128).unpadder()
-    return (unpadder.update(padded_plaintext) + unpadder.finalize()).decode()
-
-def encrypt_aes256(plaintext, key_str):
-    key = hashlib.sha256(key_str.encode()).digest()
-    iv = os.urandom(16)
-    padder = padding.PKCS7(128).padder()
-    padded_data = padder.update(plaintext.encode()) + padder.finalize()
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
-    ciphertext = cipher.encryptor().update(padded_data) + cipher.encryptor().finalize()
-    return base64.urlsafe_b64encode(iv + ciphertext).decode()
-
 def decode_encrypted_file():
     if not config.decrypt_key: return []
     decrypted_otps = []
+    crypto = aes.Crypto(config.decrypt_key)
     try:
         with open(config.ENCODED_FILE, 'r') as infile:
             for line in infile:
                 if ',' not in line: continue
                 platform, encrypted_url = map(str.strip, line.split(',', 1))
-                try: decrypted_otps.append((platform, decrypt_aes256(encrypted_url, config.decrypt_key)))
-                except Exception: continue
+                decrypted = crypto.decrypt_aes(encrypted_url)
+                decrypted_otps.append((platform, decrypted))
     except FileNotFoundError: pass
     return decrypted_otps
 

@@ -15,13 +15,10 @@ class Crypto:
         return base64.urlsafe_b64encode(nonce + ciphertext).decode()
 
     def decrypt_aes(self, ciphertext):
-        try:
-            key = hashlib.sha256(self.key.encode()).digest()
-            raw = base64.urlsafe_b64decode(ciphertext)
-            nonce = raw[:12]
-            encrypted_data = raw[12:]
-            aesgcm = AESGCM(key)
-            plaintext = aesgcm.decrypt(nonce, encrypted_data, None)
-            return plaintext.decode()
-        except Exception:
-            return None
+        key = hashlib.sha256(self.key.encode()).digest()
+        raw = base64.urlsafe_b64decode(ciphertext)
+        nonce = raw[:12]
+        encrypted_data = raw[12:]
+        aesgcm = AESGCM(key)
+        plaintext = aesgcm.decrypt(nonce, encrypted_data, None)
+        return plaintext.decode()

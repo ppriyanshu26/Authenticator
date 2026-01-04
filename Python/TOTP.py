@@ -1,27 +1,3 @@
-"""
-TOTP Authenticator v2.0.0
--------------------------
-A secure desktop application (Tkinter-based) for managing Time-based One-Time Passwords (TOTPs).
-
-Features:
-    - AES-256 encryption/decryption for securely storing OTP secrets.
-    - Password-based application lock with SHA-256 hashing.
-    - OTP list UI with live countdown timers and clipboard copy support.
-    - Password reset functionality with validation.
-    - Encrypted local cache for authentication.
-
-Files:
-    - encoded.txt : Stores encrypted OTP entries (platform, encrypted URL).
-
-Usage:
-    - On first run, prompts the user to create a password.
-    - On subsequent runs, requires password to unlock.
-    - Displays OTP codes in real time with automatic refresh.
-    - Provides options to lock and reset password.
-
-Author: Priyanshu Priyam
-"""
-
 import tkinter as tk
 import pyotp
 import time
