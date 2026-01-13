@@ -5,7 +5,7 @@ CipherAuth is a secure, cross-platform TOTP (Time-based One-Time Password) authe
 ## 🚀 Available on Microsoft Store
 
 CipherAuth is officially available for Windows via the Microsoft Store. Get it here:
-**[Get CipherAuth on Microsoft Store](https://apps.microsoft.com/store/apps)** *(Note: Replace with your actual store link)*
+**[Get CipherAuth on Microsoft Store](https://apps.microsoft.com/detail/9NS2R9NTRF2Z)**
 
 ## ✨ Features
 
