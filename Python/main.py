@@ -1,5 +1,4 @@
 import tkinter as tk
-from tkinter import messagebox
 import customtkinter as ctk
 import pyotp, sys, time, hashlib, ctypes, config
 import utils, reset_handler, creds_handler, export_handler
@@ -267,7 +266,6 @@ def build_lock_screen(root, otp_entries):
 if __name__ == "__main__":
     root = ctk.CTk()
     root.title("CipherAuth")
-    root.iconbitmap("icon.ico")
     root.geometry("420x550")
     root.configure(fg_color="#1e1e1e")
     root.resizable(False, False)
