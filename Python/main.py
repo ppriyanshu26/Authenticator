@@ -256,6 +256,7 @@ def build_lock_screen(root, otp_entries):
 if __name__ == "__main__":
     root = ctk.CTk()
     root.title("CipherAuth")
+    root.iconbitmap("icon.ico")
     root.geometry("420x550")
     root.configure(fg_color="#1e1e1e")
     root.resizable(False, False)
