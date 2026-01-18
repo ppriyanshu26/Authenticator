@@ -76,11 +76,15 @@ def reencrypt_all_data(old_key, new_key):
         traceback.print_exc()
         return False
 
-def reset_password_popup(parent, root, otp_entries, build_main_ui_callback):
-    parent.resizable(False, False)
-    frame = ctk.CTkFrame(parent, fg_color="#1e1e1e", corner_radius=0)
+def reset_password_full_ui(root, otp_entries, build_main_ui_callback):
+    for widget in root.winfo_children():
+        widget.destroy()
+    
+    frame = ctk.CTkFrame(root, fg_color="#1e1e1e", corner_radius=0)
     frame.pack(expand=True, fill="both")
+    
     root.unbind_all("<Return>")
+    root.unbind_all("<Escape>")
 
     def create_entry(label_text):
         ctk.CTkLabel(frame, text=label_text, text_color="white", font=("Segoe UI", 14, "bold")).pack(pady=(15, 5))
@@ -88,36 +92,62 @@ def reset_password_popup(parent, root, otp_entries, build_main_ui_callback):
         entry.pack()
         return entry
 
+    ctk.CTkLabel(frame, text="🔐 Reset Password", font=("Segoe UI", 20, "bold"), text_color="white").pack(pady=(40, 30))
+
     current_entry = create_entry("Enter current password:")
     current_entry.focus_set()
     new_entry = create_entry("New password:")
     confirm_entry = create_entry("Confirm new password:")
 
-    error_label = ctk.CTkLabel(frame, text="", text_color="red", font=("Segoe UI", 12))
-    error_label.pack(pady=(15, 0))
+    button_frame = ctk.CTkFrame(frame, fg_color="transparent")
+    button_frame.pack(pady=30)
+
+    def show_toast(message, is_error=False):
+        if config.toast_label:
+            config.toast_label.destroy()
+        color = "#ff4d4d" if is_error else "#444"
+        config.toast_label = ctk.CTkLabel(root, text=message, fg_color=color, text_color="white",
+                               font=("Segoe UI", 12), corner_radius=8, padx=12, pady=6)
+        config.toast_label.place(relx=0.5, rely=0.9, anchor='s')
+        root.after(2000, lambda: config.toast_label.destroy() if config.toast_label else None)
 
     def perform_reset():
         stored_hash = utils.get_stored_password()
         current_pwd = current_entry.get()
         current_hash = hashlib.sha256(current_pwd.encode()).hexdigest()
+        
         if current_hash != stored_hash:
-            error_label.configure(text="Incorrect current password")
+            show_toast("❌ Incorrect current password", is_error=True)
         elif new_entry.get() != confirm_entry.get():
-            error_label.configure(text="New passwords do not match")
+            show_toast("❌ New passwords do not match", is_error=True)
         elif len(new_entry.get()) < 8:
-            error_label.configure(text="Password too short (min 8 chars)")
+            show_toast("❌ Password too short (min 8 chars)", is_error=True)
         else:
             new_pwd = new_entry.get()
             if reencrypt_all_data(current_pwd, new_pwd):
                 utils.save_password(new_pwd)
                 config.decrypt_key = new_pwd
-                parent.destroy()
                 otp_entries[:] = utils.load_otps_from_decrypted(utils.decode_encrypted_file())
-                build_main_ui_callback(root, otp_entries)
+                show_toast("✅ Password reset successfully")
+                root.after(1500, lambda: build_main_ui_callback(root, otp_entries))
             else:
-                error_label.configure(text="Failed to re-encrypt data")
+                show_toast("❌ Failed to re-encrypt data", is_error=True)
 
-    reset_btn = ctk.CTkButton(frame, text="Reset Password", command=perform_reset,
-                          font=("Segoe UI", 14, "bold"), width=200, height=45)
-    reset_btn.pack(pady=20)
-    utils.bind_enter(root, reset_btn)
+    def go_back():
+        otp_entries[:] = utils.load_otps_from_decrypted(utils.decode_encrypted_file())
+        build_main_ui_callback(root, otp_entries)
+
+    reset_btn = ctk.CTkButton(button_frame, text="✅ Submit", command=perform_reset,
+                          font=("Segoe UI", 13, "bold"), width=120, height=40, fg_color="#444")
+    reset_btn.pack(side="left", padx=5)
+    
+    cancel_btn = ctk.CTkButton(button_frame, text="❌ Cancel", command=go_back,
+                          font=("Segoe UI", 13, "bold"), width=120, height=40, fg_color="#3d3d3d")
+    cancel_btn.pack(side="left", padx=5)
+
+    root.bind("<Return>", lambda e: perform_reset())
+    root.bind("<Escape>", lambda e: go_back())
+
+
+def reset_password_popup(parent, root, otp_entries, build_main_ui_callback):
+    reset_password_full_ui(root, otp_entries, build_main_ui_callback)

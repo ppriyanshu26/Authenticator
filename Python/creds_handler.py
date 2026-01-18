@@ -31,7 +31,6 @@ def add_credential(platform, username=None, secret=None, qr_path=None, key=None)
             pyotp.TOTP(secret).now()
             uri = pyotp.totp.TOTP(secret).provisioning_uri(name=username, issuer_name=platform)
             
-            # Generate QR code for manual entry
             qr = qrcode.QRCode(version=1, box_size=10, border=5)
             qr.add_data(uri)
             qr.make(fit=True)
@@ -63,29 +62,33 @@ def add_credential(platform, username=None, secret=None, qr_path=None, key=None)
     
     return True, "Credential added successfully"
 
-def edit_credentials_popup(parent, root, build_main_ui_callback):
-    parent.resizable(False, False)
-    parent.geometry("370x500")
-    frame = ctk.CTkFrame(parent, fg_color="#1e1e1e", corner_radius=0)
+def edit_credentials_full_ui(root, build_main_ui_callback):
+    for widget in root.winfo_children():
+        widget.destroy()
+    
+    frame = ctk.CTkFrame(root, fg_color="#1e1e1e", corner_radius=0)
     frame.pack(expand=True, fill="both", padx=20, pady=20)
     
-    ctk.CTkLabel(frame, text="Add New Credential", font=("Segoe UI", 16, "bold"), text_color="white").pack(pady=(0, 15))
+    root.unbind_all("<Return>")
+    root.unbind_all("<Escape>")
     
-    ctk.CTkLabel(frame, text="Platform Name:", text_color="white").pack(anchor="w")
+    ctk.CTkLabel(frame, text="➕ Add New Credential", font=("Segoe UI", 18, "bold"), text_color="white").pack(pady=(10, 20))
+    
+    ctk.CTkLabel(frame, text="Platform Name:", text_color="white", font=("Segoe UI", 12, "bold")).pack(anchor="w")
     platform_entry = ctk.CTkEntry(frame, font=("Segoe UI", 12), height=35)
-    platform_entry.pack(fill="x", pady=(0, 10))
+    platform_entry.pack(fill="x", pady=(0, 15))
 
-    ctk.CTkLabel(frame, text="Username (for manual entry):", text_color="white").pack(anchor="w")
+    ctk.CTkLabel(frame, text="Username (for manual entry):", text_color="white", font=("Segoe UI", 12, "bold")).pack(anchor="w")
     user_entry = ctk.CTkEntry(frame, font=("Segoe UI", 12), height=35)
-    user_entry.pack(fill="x", pady=(0, 10))
+    user_entry.pack(fill="x", pady=(0, 15))
 
-    ctk.CTkLabel(frame, text="Secret Key (for manual entry):", text_color="white").pack(anchor="w")
+    ctk.CTkLabel(frame, text="Secret Key (for manual entry):", text_color="white", font=("Segoe UI", 12, "bold")).pack(anchor="w")
     secret_entry = ctk.CTkEntry(frame, font=("Segoe UI", 12), height=35)
-    secret_entry.pack(fill="x", pady=(0, 10))
+    secret_entry.pack(fill="x", pady=(0, 15))
     
-    ctk.CTkLabel(frame, text="OR QR Code Image:", text_color="white").pack(anchor="w")
+    ctk.CTkLabel(frame, text="Or Select QR Code Image:", text_color="white", font=("Segoe UI", 12, "bold")).pack(anchor="w")
     path_frame = ctk.CTkFrame(frame, fg_color="transparent")
-    path_frame.pack(fill="x")
+    path_frame.pack(fill="x", pady=(0, 20))
     
     path_entry = ctk.CTkEntry(path_frame, font=("Segoe UI", 12), height=35)
     path_entry.pack(side="left", fill="x", expand=True)
@@ -96,10 +99,20 @@ def edit_credentials_popup(parent, root, build_main_ui_callback):
             path_entry.delete(0, tk.END)
             path_entry.insert(0, filename)
             
-    ctk.CTkButton(path_frame, text="Browse", width=80, height=35, command=browse_file, fg_color="#444", text_color="white", hover_color="#555").pack(side="right", padx=(5, 0))
+    ctk.CTkButton(path_frame, text="📁 Browse", width=80, height=35, command=browse_file, fg_color="#444", text_color="white", hover_color="#555", font=("Segoe UI", 11)).pack(side="right", padx=(10, 0))
     
-    error_label = ctk.CTkLabel(frame, text="", text_color="red", font=("Segoe UI", 11))
-    error_label.pack(pady=10)
+    def show_toast(message, is_error=False):
+        if config.toast_label:
+            config.toast_label.destroy()
+        color = "#ff4d4d" if is_error else "#444"
+        config.toast_label = ctk.CTkLabel(root, text=message, fg_color=color, text_color="white",
+                               font=("Segoe UI", 12), corner_radius=8, padx=12, pady=6)
+        config.toast_label.place(relx=0.5, rely=0.9, anchor='s')
+        root.after(2000, lambda: config.toast_label.destroy() if config.toast_label else None)
+    
+    def go_back():
+        new_entries = utils.load_otps_from_decrypted(utils.decode_encrypted_file())
+        build_main_ui_callback(root, new_entries)
     
     def save_cred():
         platform = platform_entry.get().strip()
@@ -108,16 +121,32 @@ def edit_credentials_popup(parent, root, build_main_ui_callback):
         path = path_entry.get().strip()
         
         if not platform:
-            error_label.configure(text="Platform name is required")
+            show_toast("❌ Platform name is required", is_error=True)
             return
         
         success, msg = add_credential(platform, username, secret, path, config.decrypt_key)
         if success:
-            parent.destroy()
-            new_entries = utils.load_otps_from_decrypted(utils.decode_encrypted_file())
-            build_main_ui_callback(root, new_entries)
+            show_toast("✅ " + msg)
+            root.after(1500, go_back)
         else:
-            error_label.configure(text=msg)
-            
-    ctk.CTkButton(frame, text="Save Credential", height=40, command=save_cred, fg_color="#444", text_color="white", hover_color="#666", font=("Segoe UI", 12, "bold")).pack(pady=10)
+            show_toast("❌ " + msg, is_error=True)
+    
+    button_frame = ctk.CTkFrame(frame, fg_color="transparent")
+    button_frame.pack(pady=20)
+    
+    save_btn = ctk.CTkButton(button_frame, text="✅ Save", height=40, command=save_cred, 
+                            fg_color="#444", text_color="white", hover_color="#666", font=("Segoe UI", 12, "bold"), width=120)
+    save_btn.pack(side="left", padx=5)
+    
+    cancel_btn = ctk.CTkButton(button_frame, text="❌ Cancel", height=40, command=go_back,
+                              fg_color="#3d3d3d", text_color="white", hover_color="#4d4d4d", font=("Segoe UI", 12, "bold"), width=120)
+    cancel_btn.pack(side="left", padx=5)
+    
+    platform_entry.focus()
+    root.bind("<Return>", lambda e: save_cred())
+    root.bind("<Escape>", lambda e: go_back())
+
+
+def edit_credentials_popup(parent, root, build_main_ui_callback):
+    edit_credentials_full_ui(root, build_main_ui_callback)
 
