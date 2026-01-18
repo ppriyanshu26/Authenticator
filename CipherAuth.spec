@@ -16,7 +16,7 @@ a = Analysis(
         ('Python/*.py', 'Python/'),
         ('Python/icon.ico', 'Python/')
     ],
-    hiddenimports=[],
+    hiddenimports=['pyotp', 'pyperclip', 'cv2', 'PIL', 'qrcode', 'cryptography'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
