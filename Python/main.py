@@ -215,9 +215,28 @@ def build_create_password_screen(root, otp_entries):
     frame = ctk.CTkFrame(root, fg_color="#1e1e1e"); frame.pack(expand=True, fill="both")
     root.unbind_all("<Return>")
     ctk.CTkLabel(frame, text="🔐 Create a Password", font=("Segoe UI",20,"bold"), text_color="white").pack(pady=(60,20))
-    pwd1 = ctk.CTkEntry(frame, show="*", font=("Segoe UI",14), width=250, placeholder_text="Enter Password", height=40)
-    pwd2 = ctk.CTkEntry(frame, show="*", font=("Segoe UI",14), width=250, placeholder_text="Confirm Password", height=40)
-    pwd1.pack(pady=(10,10)); pwd2.pack(pady=(0,10))
+    def make_password_row(parent, placeholder, pady=(10,10)):
+        row = ctk.CTkFrame(parent, fg_color="transparent")
+        entry = ctk.CTkEntry(row, show="*", font=("Segoe UI",14), width=210, placeholder_text=placeholder, height=40)
+        entry.pack(side="left")
+        entry.is_hidden = True
+        toggle_lbl = ctk.CTkLabel(row, text="👁️", width=48, height=44, fg_color="#444", text_color="white", corner_radius=10, font=("Segoe UI Emoji", 20))
+        def toggle_lbl_click(e=None, ent=entry, lbl=toggle_lbl):
+            if getattr(ent, 'is_hidden', True):
+                ent.configure(show="")
+                ent.is_hidden = False
+                lbl.configure(text="🙈")
+            else:
+                ent.configure(show="*")
+                ent.is_hidden = True
+                lbl.configure(text="👁️")
+        toggle_lbl.bind("<Button-1>", toggle_lbl_click)
+        toggle_lbl.pack(side="left", padx=(8,0))
+        row.pack(pady=pady)
+        return entry
+
+    pwd1 = make_password_row(frame, "Enter Password", pady=(10,10))
+    pwd2 = make_password_row(frame, "Confirm Password", pady=(0,10))
     
     pwd1.focus()
     root.after(100, pwd1.focus)
@@ -252,8 +271,24 @@ def build_lock_screen(root, otp_entries):
     frame = ctk.CTkFrame(root, fg_color="#1e1e1e"); frame.pack(expand=True, fill="both")
     root.unbind_all("<Return>")
     ctk.CTkLabel(frame, text="🔒 Enter Password", font=("Segoe UI",20,"bold"), text_color="white").pack(pady=(80,20))
-    entry = ctk.CTkEntry(frame, show="*", font=("Segoe UI",14), width=250, placeholder_text="Password", height=40); entry.pack(pady=(0,10))
-    
+    entry_row = ctk.CTkFrame(frame, fg_color="transparent")
+    entry = ctk.CTkEntry(entry_row, show="*", font=("Segoe UI",14), width=210, placeholder_text="Password", height=40)
+    entry.pack(side="left")
+    entry.is_hidden = True
+    entry_toggle_lbl = ctk.CTkLabel(entry_row, text="👁️", width=36, height=40, fg_color="#444", text_color="white", corner_radius=8)
+    def toggle_lock_click(e=None, ent=entry, lbl=entry_toggle_lbl):
+        if getattr(ent, 'is_hidden', True):
+            ent.configure(show="")
+            ent.is_hidden = False
+            lbl.configure(text="🙈")
+        else:
+            ent.configure(show="*")
+            ent.is_hidden = True
+            lbl.configure(text="👁️")
+    entry_toggle_lbl.bind("<Button-1>", toggle_lock_click)
+    entry_toggle_lbl.pack(side="left", padx=(8,0))
+    entry_row.pack(pady=(0,10))
+
     entry.focus()
     root.after(100, entry.focus)
     

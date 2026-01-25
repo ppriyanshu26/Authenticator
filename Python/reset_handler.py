@@ -88,8 +88,23 @@ def reset_password_full_ui(root, otp_entries, build_main_ui_callback):
 
     def create_entry(label_text):
         ctk.CTkLabel(frame, text=label_text, text_color="white", font=("Segoe UI", 14, "bold")).pack(pady=(15, 5))
-        entry = ctk.CTkEntry(frame, show="*", font=("Segoe UI", 14), justify="center", width=250, height=40)
-        entry.pack()
+        row = ctk.CTkFrame(frame, fg_color="transparent")
+        entry = ctk.CTkEntry(row, show="*", font=("Segoe UI", 14), justify="center", width=210, height=40)
+        entry.pack(side="left")
+        entry.is_hidden = True
+        toggle_lbl = ctk.CTkLabel(row, text="👁️", width=48, height=44, fg_color="#444", text_color="white", corner_radius=10, font=("Segoe UI Emoji", 20))
+        def toggle_click(ev=None, e=entry, l=toggle_lbl):
+            if getattr(e, 'is_hidden', True):
+                e.configure(show="")
+                e.is_hidden = False
+                l.configure(text="🙈")
+            else:
+                e.configure(show="*")
+                e.is_hidden = True
+                l.configure(text="👁️")
+        toggle_lbl.bind("<Button-1>", toggle_click)
+        toggle_lbl.pack(side="left", padx=(8,0))
+        row.pack()
         return entry
 
     ctk.CTkLabel(frame, text="🔐 Reset Password", font=("Segoe UI", 20, "bold"), text_color="white").pack(pady=(40, 30))
