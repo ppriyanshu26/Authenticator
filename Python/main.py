@@ -19,6 +19,80 @@ def lock_app(root, otp_entries):
     for w in root.winfo_children(): w.destroy()
     build_lock_screen(root, otp_entries)
 
+def build_sync_screen(root, otp_entries):
+    for w in root.winfo_children(): w.destroy()
+    root.unbind_all("<Return>")
+    root.unbind_all("<Escape>")
+    
+    frame = ctk.CTkFrame(root, fg_color="#1e1e1e")
+    frame.pack(expand=True, fill="both")
+    header = ctk.CTkFrame(frame, fg_color="#1e1e1e", corner_radius=0)
+    header.pack(side="top", fill="x", padx=10, pady=(10, 5))
+    
+    ctk.CTkLabel(header, text="🔃 Sync Settings", font=("Segoe UI", 18, "bold"), text_color="white").pack(side="left")
+    back_btn = ctk.CTkButton(header, text="← Back", width=80, height=35, font=("Segoe UI", 12), fg_color="#444", text_color="white", hover_color="#666", command=lambda: build_main_ui(root, otp_entries))
+    back_btn.pack(side="right")
+    
+    ctk.CTkFrame(root, height=1, fg_color="#333").pack(fill="x")
+    content = ctk.CTkFrame(frame, fg_color="#1e1e1e")
+    content.pack(fill="both", expand=True, padx=15, pady=15)
+
+    ctk.CTkLabel(content, text="Device Name", font=("Segoe UI", 12, "bold"), text_color="white").pack(anchor="w", pady=(0, 5))
+    current_name = utils.load_device_name()
+    name_entry = ctk.CTkEntry(content, font=("Segoe UI", 11), height=35, placeholder_text="Enter device name")
+    name_entry.insert(0, current_name)
+    name_entry.pack(fill="x", pady=(0, 10))
+    name_entry.focus_set()
+    
+    error_label = ctk.CTkLabel(content, text="", text_color="red", font=("Segoe UI", 10))
+    error_label.pack(anchor="w", pady=(0, 5))
+    
+    def save_device_name():
+        name = name_entry.get().strip()
+        if not name:
+            error_label.configure(text="❌ Device name cannot be empty")
+            return
+        if utils.save_device_name(name):
+            utils.start_sync_broadcast(name)
+            error_label.configure(text="✓ Device name saved & sync started", text_color="#28db73")
+            root.after(1500, lambda: build_main_ui(root, otp_entries))
+        else:
+            error_label.configure(text="❌ Failed to save device name")
+    
+    save_btn = ctk.CTkButton(content, text="Save Device Name", font=("Segoe UI", 11, "bold"), height=35, fg_color="#0d7377", hover_color="#14919b", command=save_device_name)
+    save_btn.pack(fill="x", pady=(0, 15))
+    
+    ctk.CTkLabel(content, text="Available Devices", font=("Segoe UI", 12, "bold"), text_color="white").pack(anchor="w", pady=(5, 5))
+    devices_frame = ctk.CTkScrollableFrame(content, fg_color="#2b2b2b", corner_radius=8, height=150)
+    devices_frame.pack(fill="both", expand=True, pady=(0, 10))
+    loading_label = ctk.CTkLabel(devices_frame, text="🔍 Scanning for devices...", font=("Segoe UI", 11), text_color="#888")
+    loading_label.pack(pady=20)
+    
+    def load_devices():
+        loading_label.pack_forget()
+        for w in devices_frame.winfo_children():
+            w.destroy()
+        
+        devices = utils.discover_cipherauth_devices()
+        
+        if not devices:
+            ctk.CTkLabel(devices_frame, text="No CipherAuth devices found", font=("Segoe UI", 11), text_color="#888").pack(pady=20)
+        else:
+            for device in devices:
+                device_item = ctk.CTkFrame(devices_frame, fg_color="#1e1e1e", corner_radius=6)
+                device_item.pack(fill="x", padx=5, pady=4)
+                
+                name_label = ctk.CTkLabel(device_item, text=device['name'], font=("Segoe UI", 10, "bold"), text_color="#aaa")
+                name_label.pack(anchor="w", padx=10, pady=(6, 2))
+                
+                ip_label = ctk.CTkLabel(device_item, text=device['ip'], font=("Segoe UI", 9), text_color="#666")
+                ip_label.pack(anchor="w", padx=10, pady=(0, 6))
+    
+    root.after(500, load_devices)
+    
+    root.bind("<Return>", lambda _: save_device_name())
+    root.bind("<Escape>", lambda _: (utils.stop_sync_broadcast(), build_main_ui(root, otp_entries)))
+
 def open_popup(func, title="Popup", size="370x300", *args, **kwargs):
     if config.popup_window and config.popup_window.winfo_exists():
         config.popup_window.lift()
@@ -157,7 +231,7 @@ def build_main_ui(root, otp_entries):
     footer = ctk.CTkFrame(outer_frame, fg_color="#1e1e1e", corner_radius=0)
     footer.pack(side="bottom", fill="x")
     
-    for btn_text, cmd in [("🔄 Reset", lambda: reset_handler.reset_password_full_ui(root, otp_entries, build_main_ui)), ("➕ Add Creds", lambda: creds_handler.edit_credentials_full_ui(root, build_main_ui)), ("📥 Download", lambda: export_handler.handle_download(root)), ("🔃 Sync", lambda: None)]:
+    for btn_text, cmd in [("🔄 Reset", lambda: reset_handler.reset_password_full_ui(root, otp_entries, build_main_ui)), ("➕ Add Creds", lambda: creds_handler.edit_credentials_full_ui(root, build_main_ui)), ("📥 Download", lambda: export_handler.handle_download(root)), ("🔃 Sync", lambda: build_sync_screen(root, otp_entries))]:
         ctk.CTkButton(footer, text=btn_text, font=("Segoe UI", 12), fg_color="#2b2b2b", text_color="white", hover_color="#3d3d3d", height=45, corner_radius=0, command=cmd).pack(side="left", fill="x", expand=True)
     
     config.inner_frame = ctk.CTkScrollableFrame(outer_frame, fg_color="#1e1e1e", corner_radius=0)

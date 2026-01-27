@@ -24,3 +24,4 @@ toast_label = None
 inner_frame = None
 popup_window = None
 frames = []
+DEVICE_NAME_FILE = os.path.join(APP_FOLDER, "device_name.txt")

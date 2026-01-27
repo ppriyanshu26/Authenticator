@@ -1,5 +1,5 @@
 import customtkinter as ctk
-import pyperclip, os, hashlib, config, cv2, aes, io, json, time
+import pyperclip, os, hashlib, config, cv2, aes, io, json, time, sys, socket, threading
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse, unquote
 import numpy as np
 from PIL import Image, ImageFilter
@@ -98,6 +98,123 @@ def save_password(password):
         except: pass
         return True
     except: return False
+
+def save_device_name(name):
+    try:
+        with open(config.DEVICE_NAME_FILE, 'w') as f:
+            f.write(name.strip())
+        return True
+    except: return False
+
+def load_device_name():
+    try:
+        if os.path.exists(config.DEVICE_NAME_FILE):
+            with open(config.DEVICE_NAME_FILE, 'r') as f:
+                content = f.read().strip()
+                return content if content else "Authenticator Desktop"
+    except: pass
+    return "Authenticator Desktop"
+
+class SyncDeviceAdvertiser:
+    BROADCAST_PORT = 34567
+    SERVICE_TYPE = "CIPHERAUTH_SYNC"
+    
+    def __init__(self, device_name):
+        self.device_name = device_name
+        self.running = False
+        self.thread = None
+        self.sock = None
+    
+    def start(self):
+        if self.running:
+            return
+        self.running = True
+        self.thread = threading.Thread(target=self._broadcast_loop, daemon=True)
+        self.thread.start()
+    
+    def stop(self):
+        self.running = False
+        if self.sock:
+            try:
+                self.sock.close()
+            except:
+                pass
+    
+    def _broadcast_loop(self):
+        try:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            
+            while self.running:
+                try:
+                    message = json.dumps({
+                        "type": self.SERVICE_TYPE,
+                        "device_name": self.device_name,
+                        "ip": socket.gethostbyname(socket.gethostname()),
+                        "timestamp": time.time()
+                    }).encode('utf-8')
+                    
+                    self.sock.sendto(message, ('<broadcast>', self.BROADCAST_PORT))
+                except:
+                    pass
+                
+                time.sleep(1)
+        except:
+            pass
+        finally:
+            if self.sock:
+                try:
+                    self.sock.close()
+                except:
+                    pass
+
+_advertiser = None
+
+def start_sync_broadcast(device_name):
+    global _advertiser
+    if _advertiser:
+        _advertiser.stop()
+    _advertiser = SyncDeviceAdvertiser(device_name)
+    _advertiser.start()
+
+def stop_sync_broadcast():
+    global _advertiser
+    if _advertiser:
+        _advertiser.stop()
+        _advertiser = None
+
+def discover_cipherauth_devices():
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(('', SyncDeviceAdvertiser.BROADCAST_PORT))
+        sock.settimeout(3)
+        
+        devices = {}
+        start_time = time.time()
+        
+        while time.time() - start_time < 3:
+            try:
+                data, addr = sock.recvfrom(1024)
+                message = json.loads(data.decode('utf-8'))
+                
+                if message.get('type') == SyncDeviceAdvertiser.SERVICE_TYPE:
+                    device_name = message.get('device_name', 'Unknown')
+                    device_ip = message.get('ip', addr[0])
+                    devices[device_name] = {
+                        'name': device_name,
+                        'ip': device_ip,
+                        'timestamp': message.get('timestamp', 0)
+                    }
+            except socket.timeout:
+                break
+            except:
+                pass
+        sock.close()
+        return list(devices.values())
+    except:
+        return []
 
 def get_stored_password():
     try:
