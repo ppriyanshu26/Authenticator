@@ -2,10 +2,8 @@
 
 CipherAuth is a secure, cross-platform TOTP (Time-based One-Time Password) authenticator applications designed for simplicity and security. Built with Python and a modern UI powered by CustomTkinter, it provides a safe vault for your two-factor authentication tokens.
 
-## 🚀 Available on Microsoft Store
-
-CipherAuth is officially available for Windows via the Microsoft Store. Get it here:
-**[Get CipherAuth on Microsoft Store](https://apps.microsoft.com/detail/9NS2R9NTRF2Z)**
+> **Repository Status:** This Python repository has been migrated to the Flutter version and is now archived.
+> Active development continues at [CipherAuth-Flutter](https://github.com/ppriyanshu26/CipherAuth-Flutter).
 
 ## ✨ Features
 
@@ -19,7 +17,7 @@ CipherAuth is officially available for Windows via the Microsoft Store. Get it h
 
 ## 🛠️ Development & Compilation
 
-CipherAuth is ready to be compiled for any operating system (Windows, macOS, Linux) without any additional code changes.
+CipherAuth can be compiled for Windows, macOS, and Linux without additional code changes. However, this repository has only been tested on Windows.
 
 ### Running from Source
 
@@ -66,7 +64,7 @@ Click on the **"➕ Add Creds"** button in the footer and fill in the account de
 Use the **"📥 Download"** button to export a decrypted version of your credentials. Keep this file safe!
 
 ### Can I use this on Mac or Linux?
-Yes! Since it is written in Python, you can run it from source or compile it using PyInstaller on your respective operating system. For mobile platforms like Linux iOS and Android, [CipherAuth-Flutter](https://github.com/ppriyanshu26/CipherAuth-Flutter)
+Yes. Since it is written in Python, you can run it from source or compile it using PyInstaller on macOS and Linux as well. However, this repository is only tested on Windows. For mobile platforms and ongoing development, use [CipherAuth-Flutter](https://github.com/ppriyanshu26/CipherAuth-Flutter).
 
 ### Is my data synced to the cloud?
 No. CipherAuth is designed to be fully offline for maximum privacy. Your data stays on your device. However, you can sync your credentials across multiple devices on the same network using the built-in **Sync** feature (🔃). Devices must have the same master password encryption key to synchronize securely.
