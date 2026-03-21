@@ -15,6 +15,56 @@ CipherAuth is a secure, cross-platform TOTP (Time-based One-Time Password) authe
 - **Password Protected:** Secured by a master password to prevent unauthorized access.
 - **Sync:** Sync your credentials securely to another device.
 
+## 📸 App Walkthrough (User Flow)
+
+1. **Create Screen** - First-time setup screen to create your secure vault.
+
+![Create Screen](images/Create%20Screen.png)
+
+2. **Login Screen** - Start by unlocking CipherAuth using your master password.
+
+![Login Screen](images/Login%20Screen.png)
+
+3. **Initial Home Screen** - Empty-state dashboard after setup, before adding any credentials.
+
+![Initial Home Screen](images/Initial%20HomeScreen.png)
+
+4. **Add Credentials Manually** - Add an account by entering details manually.
+
+![Add Credentials Manually](images/Add%20Creds%20Manually.png)
+
+5. **Add Credentials with QR Image** - Import account details quickly by scanning a QR image.
+
+![Add Credentials with Image](images/Add%20Creds%20with%20Image.png)
+
+6. **Home Screen** - Main dashboard showing your saved authentication entries.
+
+![Home Screen](images/HomeScreen.png)
+
+7. **Blurred QR View** - Protected QR preview state for safer on-screen visibility.
+
+![Blurred QR](images/Blurred%20QR.png)
+
+8. **Unblurred QR View** - Reveal the QR code when needed for scanning and setup.
+
+![Unblurred QR](images/Unblur%20QR.png)
+
+9. **Download / Export** - Export your credentials backup file securely.
+
+![Download](images/Download.png)
+
+10. **Sync Screen** - Sync encrypted credentials across devices on the same network.
+
+![Sync Screen](images/Sync%20Screen.png)
+
+11. **Reset Password** - Change your master password while keeping data protected.
+
+![Reset Password](images/Reset%20Password.png)
+
+12. **Delete Credentials** - Remove entries you no longer need from the vault.
+
+![Delete Credentials](images/Delete%20Creds.png)
+
 ## 🛠️ Development & Compilation
 
 CipherAuth can be compiled for Windows, macOS, and Linux without additional code changes. However, this repository has only been tested on Windows.
