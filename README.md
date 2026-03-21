@@ -17,53 +17,77 @@ CipherAuth is a secure, cross-platform TOTP (Time-based One-Time Password) authe
 
 ## 📸 App Walkthrough (User Flow)
 
-1. **Create Screen** - First-time setup screen to create your secure vault.
+<p align="center"><strong>Create Screen</strong> - First-time setup screen to create your secure vault.</p>
 
-![Create Screen](images/Create%20Screen.png)
+<p align="center">
+   <img src="images/Create%20Screen.png" alt="Create Screen" width="420" />
+</p>
 
-2. **Login Screen** - Start by unlocking CipherAuth using your master password.
+<p align="center"><strong>Login Screen</strong> - Start by unlocking CipherAuth using your master password.</p>
 
-![Login Screen](images/Login%20Screen.png)
+<p align="center">
+   <img src="images/Login%20Screen.png" alt="Login Screen" width="420" />
+</p>
 
-3. **Initial Home Screen** - Empty-state dashboard after setup, before adding any credentials.
+<p align="center"><strong>Initial Home Screen</strong> - Empty-state dashboard after setup, before adding any credentials.</p>
 
-![Initial Home Screen](images/Initial%20HomeScreen.png)
+<p align="center">
+   <img src="images/Initial%20HomeScreen.png" alt="Initial Home Screen" width="420" />
+</p>
 
-4. **Add Credentials Manually** - Add an account by entering details manually.
+<p align="center"><strong>Add Credentials Manually</strong> - Add an account by entering details manually.</p>
 
-![Add Credentials Manually](images/Add%20Creds%20Manually.png)
+<p align="center">
+   <img src="images/Add%20Creds%20Manually.png" alt="Add Credentials Manually" width="420" />
+</p>
 
-5. **Add Credentials with QR Image** - Import account details quickly by scanning a QR image.
+<p align="center"><strong>Add Credentials with QR Image</strong> - Import account details quickly by scanning a QR image.</p>
 
-![Add Credentials with Image](images/Add%20Creds%20with%20Image.png)
+<p align="center">
+   <img src="images/Add%20Creds%20with%20Image.png" alt="Add Credentials with Image" width="420" />
+</p>
 
-6. **Home Screen** - Main dashboard showing your saved authentication entries.
+<p align="center"><strong>Home Screen</strong> - Main dashboard showing your saved authentication entries.</p>
 
-![Home Screen](images/HomeScreen.png)
+<p align="center">
+   <img src="images/HomeScreen.png" alt="Home Screen" width="420" />
+</p>
 
-7. **Blurred QR View** - Protected QR preview state for safer on-screen visibility.
+<p align="center"><strong>Blurred QR View</strong> - Protected QR preview state for safer on-screen visibility.</p>
 
-![Blurred QR](images/Blurred%20QR.png)
+<p align="center">
+   <img src="images/Blurred%20QR.png" alt="Blurred QR" width="420" />
+</p>
 
-8. **Unblurred QR View** - Reveal the QR code when needed for scanning and setup.
+<p align="center"><strong>Unblurred QR View</strong> - Reveal the QR code when needed for scanning and setup.</p>
 
-![Unblurred QR](images/Unblur%20QR.png)
+<p align="center">
+   <img src="images/Unblur%20QR.png" alt="Unblurred QR" width="420" />
+</p>
 
-9. **Download / Export** - Export your credentials backup file securely.
+<p align="center"><strong>Download / Export</strong> - Export your credentials backup file securely.</p>
 
-![Download](images/Download.png)
+<p align="center">
+   <img src="images/Download.png" alt="Download" width="420" />
+</p>
 
-10. **Sync Screen** - Sync encrypted credentials across devices on the same network.
+<p align="center"><strong>Sync Screen</strong> - Sync encrypted credentials across devices on the same network.</p>
 
-![Sync Screen](images/Sync%20Screen.png)
+<p align="center">
+   <img src="images/Sync%20Screen.png" alt="Sync Screen" width="420" />
+</p>
 
-11. **Reset Password** - Change your master password while keeping data protected.
+<p align="center"><strong>Reset Password</strong> - Change your master password while keeping data protected.</p>
 
-![Reset Password](images/Reset%20Password.png)
+<p align="center">
+   <img src="images/Reset%20Password.png" alt="Reset Password" width="420" />
+</p>
 
-12. **Delete Credentials** - Remove entries you no longer need from the vault.
+<p align="center"><strong>Delete Credentials</strong> - Remove entries you no longer need from the vault.</p>
 
-![Delete Credentials](images/Delete%20Creds.png)
+<p align="center">
+   <img src="images/Delete%20Creds.png" alt="Delete Credentials" width="420" />
+</p>
 
 ## 🛠️ Development & Compilation
 
